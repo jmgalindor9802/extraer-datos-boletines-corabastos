@@ -1,0 +1,47 @@
+substitutions:
+  _REGION: us-central1
+  _SERVICE_NAME: extractor-corabastos
+  _AR_REPO: corabastos
+  _BQ_TABLE: ""
+  _ALLOWED_BUCKET: ""
+
+steps:
+  - name: python:3.11-slim
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        pip install --no-cache-dir -r requirements-dev.txt
+        pytest --cov=app --cov-fail-under=85 --cov-report=term-missing
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_SERVICE_NAME}:$SHORT_SHA
+      - .
+
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_SERVICE_NAME}:$SHORT_SHA
+
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE_NAME}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_SERVICE_NAME}:$SHORT_SHA
+      - --region=${_REGION}
+      - --platform=managed
+      - --no-allow-unauthenticated
+      - --timeout=300
+      - --memory=1Gi
+      - --set-env-vars=GCP_PROJECT=$PROJECT_ID,GCP_LOCATION=${_REGION},BQ_TABLE=${_BQ_TABLE},ALLOWED_BUCKET=${_ALLOWED_BUCKET}
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_AR_REPO}/${_SERVICE_NAME}:$SHORT_SHA
+
+options:
+  logging: CLOUD_LOGGING_ONLY

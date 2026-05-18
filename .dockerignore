@@ -1,0 +1,9 @@
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+__pycache__/
+*.pyc
+.git/
+.cursor/
