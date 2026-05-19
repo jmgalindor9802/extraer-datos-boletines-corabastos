@@ -2,8 +2,6 @@ import json
 import logging
 import re
 import time
-from typing import Any
-
 import vertexai
 from google.api_core import exceptions as gcp_exceptions
 from tenacity import (
@@ -63,25 +61,25 @@ def reset_vertex() -> None:
     _vertex_initialized = False
 
 
-def _build_generation_config(*, use_thinking: bool) -> GenerationConfig:
-    settings = get_settings()
-    kwargs: dict[str, Any] = {
-        "response_mime_type": "application/json",
-        "response_schema": RESPONSE_SCHEMA,
-        "temperature": 0.1,
-    }
-    if use_thinking:
-        try:
-            from vertexai.generative_models import ThinkingConfig
+def _build_generation_config() -> GenerationConfig:
+    config = GenerationConfig(
+        response_mime_type="application/json",
+        response_schema=RESPONSE_SCHEMA,
+        temperature=0.1,
+    )
+    try:
+        from google.cloud.aiplatform_v1beta1.types import content as gapic_types
 
-            kwargs["thinking_config"] = ThinkingConfig(
-                thinking_budget=settings.gemini_thinking_budget
-            )
-        except ImportError:
-            logger.warning(
-                "ThinkingConfig no disponible en esta versión de vertexai."
-            )
-    return GenerationConfig(**kwargs)
+        # Gemini 2.5 Flash activa thinking por defecto; 0 lo desactiva.
+        # https://cloud.google.com/vertex-ai/generative-ai/docs/thinking
+        config._raw_generation_config.thinking_config = (
+            gapic_types.GenerationConfig.ThinkingConfig(thinking_budget=0)
+        )
+    except (ImportError, AttributeError) as exc:
+        logger.warning(
+            "No se pudo desactivar thinking (SDK antiguo): %s", exc
+        )
+    return config
 
 
 def _parse_gemini_json(raw_text: str) -> list[dict]:
@@ -101,8 +99,6 @@ def _parse_gemini_json(raw_text: str) -> list[dict]:
 def _generate_raw(
     gcs_uri: str,
     model_name: str,
-    *,
-    use_thinking: bool,
 ) -> tuple[list[dict], str]:
     settings = get_settings()
     init_vertex()
@@ -112,7 +108,7 @@ def _generate_raw(
         system_instruction=SYSTEM_PROMPT,
     )
     pdf_part = Part.from_uri(uri=gcs_uri, mime_type="application/pdf")
-    generation_config = _build_generation_config(use_thinking=use_thinking)
+    generation_config = _build_generation_config()
 
     @retry(
         retry=retry_if_exception(_is_transient_error),
@@ -136,7 +132,6 @@ def _generate_raw(
         "Respuesta de Gemini procesada.",
         extra={
             "modelo": model_name,
-            "thinking": use_thinking,
             "filas_raw": len(registros),
             "duracion_ms": duration_ms,
             "gcs_uri": gcs_uri,
@@ -155,12 +150,9 @@ def extraer_registros(
     model_name = (
         settings.gemini_model_fallback if use_fallback else settings.gemini_model
     )
-    use_thinking = use_fallback
-
     logger.info(
-        "Enviando PDF a Gemini: %s (modelo=%s, thinking=%s)",
+        "Enviando PDF a Gemini: %s (modelo=%s)",
         gcs_uri,
         model_name,
-        use_thinking,
     )
-    return _generate_raw(gcs_uri, model_name, use_thinking=use_thinking)
+    return _generate_raw(gcs_uri, model_name)

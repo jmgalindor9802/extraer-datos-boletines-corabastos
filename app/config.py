@@ -44,7 +44,6 @@ class Settings:
     bq_table: str | None
     gemini_model: str
     gemini_model_fallback: str
-    gemini_thinking_budget: int
     gemini_max_retries: int
     allowed_bucket: str | None
     require_pdf: bool
@@ -61,7 +60,6 @@ class Settings:
             gemini_model_fallback=os.environ.get(
                 "GEMINI_MODEL_FALLBACK", "gemini-2.5-flash"
             ),
-            gemini_thinking_budget=_env_int("GEMINI_THINKING_BUDGET", 1024),
             gemini_max_retries=_env_int("GEMINI_MAX_RETRIES", 3),
             allowed_bucket=os.environ.get("ALLOWED_BUCKET") or None,
             require_pdf=_env_bool("REQUIRE_PDF", True),

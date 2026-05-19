@@ -48,8 +48,7 @@ La idempotencia consulta si ya existe alguna fila con el mismo `archivo_origen`.
 | `GCP_LOCATION` | No | `us-central1` | Región Vertex AI |
 | `BQ_TABLE` | Sí | — | `project.dataset.table` |
 | `GEMINI_MODEL` | No | `gemini-2.5-flash` | Modelo principal |
-| `GEMINI_MODEL_FALLBACK` | No | `gemini-2.5-flash` | Modelo con thinking si falla validación |
-| `GEMINI_THINKING_BUDGET` | No | `1024` | Presupuesto thinking (solo fallback) |
+| `GEMINI_MODEL_FALLBACK` | No | `gemini-2.5-flash` | Modelo alternativo si falla validación |
 | `GEMINI_MAX_RETRIES` | No | `3` | Reintentos ante errores transitorios |
 | `ALLOWED_BUCKET` | No | — | Si se define, rechaza otros buckets (403) |
 | `REQUIRE_PDF` | No | `true` | Ignora objetos que no terminan en `.pdf` |
@@ -123,7 +122,7 @@ app/
   events.py           # Parseo Eventarc / Pub/Sub
   fecha.py            # Fecha desde nombre de archivo
   models.py           # Validación Pydantic
-  gemini_service.py   # Vertex AI + reintentos + thinking fallback
+  gemini_service.py   # Vertex AI + reintentos (thinking desactivado)
   bigquery_service.py # Idempotencia e inserción
   handler.py          # Orquestación del flujo
 main.py               # Flask (POST /, GET /health)

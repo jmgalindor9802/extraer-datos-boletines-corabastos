@@ -3,7 +3,19 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.gemini_service import _parse_gemini_json, extraer_registros, reset_vertex
+from app.gemini_service import (
+    _build_generation_config,
+    _parse_gemini_json,
+    extraer_registros,
+    reset_vertex,
+)
+
+
+def test_build_generation_config_disables_thinking():
+    config = _build_generation_config()
+    thinking = config._raw_generation_config.thinking_config
+    assert thinking is not None
+    assert thinking.thinking_budget == 0
 
 
 def test_parse_gemini_json_markdown():
